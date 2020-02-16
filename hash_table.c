@@ -23,10 +23,15 @@ struct hash_table* hash_table_init(uint32_t size)
 	return ht;
 }
 
+/* return value
+ * -1 : malloc error or same key exists
+ *  0 : no collision happens
+ *  1 : collision happens */
 int hash_add(struct hash_table *ht, void *key, void *val)
 {
 	uint32_t idx;
 	uint64_t hash_val;
+	int collision = 0;
 
 	/**
 	 * https://www.youtube.com/watch?v=o8NPllzkFhE
@@ -38,6 +43,9 @@ int hash_add(struct hash_table *ht, void *key, void *val)
 	hash_val = ht->func_hash(key);
 	idx = hash_val % ht->size;
 	indirect = &ht->table[idx];
+
+	if ((*indirect) != NULL)
+		collision = 1;
 
 	while ((*indirect) != NULL) {
 		/* check same key exists */
@@ -52,7 +60,7 @@ int hash_add(struct hash_table *ht, void *key, void *val)
 	(*indirect)->val = val;
 	(*indirect)->next = NULL;
 
-	return 0;
+	return collision;
 }
 
 void hash_table_destroy(struct hash_table *ht)

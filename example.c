@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "hash_table.h"
 
 #if !defined(__FreeBSD__) || !defined(__OpenBSD__) || !defined(__APPLE__)
 #include <bsd/stdlib.h>
 #endif
 
-static uint64_t djb2(const unsigned char *str)
+/* http://www.cse.yorku.ca/~oz/hash.html */
+uint64_t djb2(const unsigned char *str)
 {
     int c;
     unsigned long hash = 5381;
@@ -46,27 +48,29 @@ int main(void)
 	const char charset1[] =	"abcdefghijklmnopqrstuvwxyz"
 							"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const char charset2[] = "0123456789";
+	const uint32_t TABLE_SIZE = 256 + 1;
 
 	/* Init hash table */
-	const uint32_t TABLE_SIZE = 64;
 	struct hash_table *ht = hash_table_init(TABLE_SIZE);
 	ht->func_hash = (uint64_t(*)(const void*)) djb2;
-	ht->func_key_cmp = (int(*)(const void*,const void*))strcmp;
+	ht->func_key_cmp = (int(*)(const void*, const void*))strcmp;
 
 	/* Add entries */
-	uint32_t times = TABLE_SIZE;
+	uint32_t cnt = 0;
+	uint32_t times = TABLE_SIZE / 2;
 	while (times--) {
 		char *key = random_str(charset1, sizeof(charset1) - 1, 16);
 		char *val = random_str(charset2, sizeof(charset2) - 1, 8);
-		hash_add(ht, key, val);
+		if (hash_add(ht, key, val) == 1)
+			cnt++;
 	}
-	hash_add(ht, strdup("dongheejeong"), strdup("010-7687-4677"));
 
 	/* Print hash table status */
 	struct hash_entry *entry;
 	for (uint32_t i = 0; i < ht->size; i++) {
 		printf("[%u]:", i);
 		entry = ht->table[i];
+
 		while (entry != NULL) {
 			printf(" -> [key: (%s), val: (%s)]",
 					(char*) entry->key, (char*) entry->val);
@@ -74,6 +78,8 @@ int main(void)
 		}
 		puts("");
 	}
+	printf("hash_table_size:[%u] / entry:[%u] / collision cnt:[%u](%0.2f%)\n",
+			TABLE_SIZE, TABLE_SIZE / 2, cnt, (float)cnt / (TABLE_SIZE/2));
 
 	/* Destroy hash table */
 	hash_table_destroy(ht);
